@@ -6,8 +6,15 @@ def decode_instruction(code):
 
     code = digits[3] * 10 + digits[4]
     l = 4
+
     if code == 3 or code == 4:
         l = 2
+
+    if code == 5 or code == 6:
+        l = 3
+
+    if code == 7 or code == 8:
+        l = 4
 
     return {
         "code": code,
@@ -81,7 +88,7 @@ def calculator(input_nb):
 
         if code == 3:
             data[first] = input_nb
-            return instr["len"]
+            return instr["len"] + i
 
         if code == 4:
             first_evaluated = first #get_param_value(first, instr["mode1"])
@@ -89,7 +96,7 @@ def calculator(input_nb):
             print "output: " + str(out)
             if out != 0:
                 print "ERRR"
-            return instr["len"]
+            return instr["len"] + i
 
         second = data[i + 2]
         pos = data[i + 3]
@@ -97,6 +104,33 @@ def calculator(input_nb):
         first_evaluated = get_param_value(first, instr["mode1"])
         second_evaluated = get_param_value(second, instr["mode2"])
         #pos = get_param_value(pos, instr["mode3"])
+
+        if code == 5:
+            if first_evaluated != 0:
+                return second_evaluated
+            else:
+                return instr["len"] + i
+
+
+        if code == 6:
+            if first_evaluated == 0:
+                return second_evaluated
+            else:
+                return instr["len"] + i
+
+        if code == 7:
+            if first_evaluated < second_evaluated:
+                data[pos] = 1
+            else:
+                data[pos] = 0
+            return instr["len"] + i
+
+        if code == 8:
+            if first_evaluated == second_evaluated:
+                data[pos] = 1
+            else:
+                data[pos] = 0
+            return instr["len"] + i
 
         data = extend(data, pos)
         val = -1000
@@ -112,11 +146,11 @@ def calculator(input_nb):
         print "idx " + str(i) + " instr:" + str(instr) + "first [" + str(first) + "," + str(
               first_evaluated) + "] " + " second [" + str(second) + "," + str(second_evaluated) + "]" + " => data[" + str(pos) + "]=" + str(val)
 
-        return instr["len"]
+        return instr["len"] + i
 
     idx = 0
-    while (idx < len(data)):
-        idx = idx + do_instruction(data, idx)
+    while idx < len(data):
+        idx = do_instruction(data, idx)
 
 
-calculator(1)
+calculator(5)
