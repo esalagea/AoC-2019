@@ -13,9 +13,11 @@ def read_data(filepath, width, height):
     layer = 0
     zeros, ones, twos = 0, 0, 0
     min_layer, min_zeros = -1, 10000000
+    pixels_in_layer = []
 
     for pixelIdx in range(img_size):
         pixel = line[pixelIdx]
+        pixels_in_layer.append(pixel)
         if pixel == '0':
             zeros += 1
             #print "zero found in layer " + str(layer)
@@ -41,5 +43,55 @@ def read_data(filepath, width, height):
     print img[min_layer][1] * img[min_layer][2]
 
 
+def decode(filepath, width, height):
+    line = ""
+    with open(filepath) as fp:
+        line = fp.readline()
+        print line
+        print len(line)
 
-read_data("input/d7.txt", 25, 6)
+    img_size = len(line)
+    layer_size = width * height
+    print "layer size is " + str(layer_size)
+    layers = img_size / layer_size
+    img = {}
+    layer = 0
+    zeros, ones, twos = 0, 0, 0
+    min_layer, min_zeros = -1, 10000000
+    pixels_in_layer = []
+
+    for pixelIdx in range(img_size):
+        pixel = line[pixelIdx]
+        pixels_in_layer.append(pixel)
+
+        if ((pixelIdx+1) % layer_size == 0) and pixelIdx != 0:
+            #print "New layer at pixel " + str(pixelIdx)
+            img[layer] = pixels_in_layer
+            layer = layer + 1
+            pixels_in_layer = []
+
+    print img
+
+    decoded = []
+    for pixel_number in range(layer_size):
+        pixel = 2
+        layer_idx = 0
+        while layer_idx < layers:
+            #print "Checking layer " + str(layer_idx) + " for pixel_nb " + str(pixel_number)
+            if img[layer_idx][pixel_number] == `1`:
+                pixel = 1
+                break
+            if img[layer_idx][pixel_number] == `0`:
+                pixel = 0
+                break
+            layer_idx+=1
+        decoded.append(pixel)
+
+    result =""
+    for d in decoded:
+        result = result + str(d)
+    print result
+
+
+#read_data("input/d7.txt", 25, 6)
+decode("input/d7_short.txt", 2, 2)
