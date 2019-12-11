@@ -115,5 +115,5 @@ def decode(filepath, width, height):
     print "result len = " + str(len(result))
 
 
-decode("input/d7.txt", 25, 6)
+decode("input/d8.txt", 25, 6)
 #decode("input/d7_short.txt", 2, 2)
