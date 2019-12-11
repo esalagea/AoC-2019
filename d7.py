@@ -1,119 +1,175 @@
-def read_data(filepath, width, height):
-    line = ""
-    with open(filepath) as fp:
-        line = fp.readline()
-        print line
-        print len(line)
+def decode_instruction(code):
+    digits = [int(d) for d in str(code)]
 
-    img_size = len(line)
-    layer_size = width * height
-    print "layer size is " + str(layer_size)
-    layers = img_size / layer_size
-    img = {}
-    layer = 0
-    zeros, ones, twos = 0, 0, 0
-    min_layer, min_zeros = -1, 10000000
-    pixels_in_layer = []
+    while len(digits) < 5:
+        digits = [0] + digits
 
-    for pixelIdx in range(img_size):
-        pixel = line[pixelIdx]
-        pixels_in_layer.append(pixel)
-        if pixel == '0':
-            zeros += 1
-            # print "zero found in layer " + str(layer)
-        if pixel == '1':
-            ones += 1
-        if pixel == '2':
-            twos += 1
+    code = digits[3] * 10 + digits[4]
+    l = 4
 
-        if ((pixelIdx + 1) % layer_size == 0) and pixelIdx != 0:
-            print "New layer at pixel " + str(pixelIdx)
-            img[layer] = (zeros, ones, twos)
-            if zeros < min_zeros:
-                min_zeros = zeros
-                min_layer = layer
+    if code == 3 or code == 4:
+        l = 2
 
-            layer = layer + 1
-            zeros, ones, twos = 0, 0, 0
+    if code == 5 or code == 6:
+        l = 3
 
-    print min_zeros
-    print img
-    print img[min_layer]
-    print img[min_layer][1] * img[min_layer][2]
+    if code == 7 or code == 8:
+        l = 4
+
+    return {
+        "code": code,
+        "len": l,
+        "mode1": digits[2],
+        "mode2": digits[1],
+        "mode3": digits[0]
+    }
 
 
-def decode(filepath, width, height):
-    raw_image = ""
-    with open(filepath) as fp:
-        line = fp.readline()
-        while line:
-            raw_image += line.strip()
-            line = fp.readline()
-    img_size = len(raw_image)
-    layer_size = width * height
-    print "layer size is " + str(layer_size)
-    layers = img_size / layer_size
-    img = {}
-    layer = 0
-    pixels_in_layer = []
+def extend(data, pos):
+    if pos >= len(data):
+        data = data + [0 for i in range(pos - len(data) + 1)]
 
-    for pixelIdx in range(img_size):
-        pixel = raw_image[pixelIdx]
-        pixels_in_layer.append(pixel)
-
-        if ((pixelIdx + 1) % layer_size == 0) and pixelIdx != 0:
-            # print "New layer at pixel " + str(pixelIdx)
-            img[layer] = pixels_in_layer
-            layer = layer + 1
-            pixels_in_layer = []
-
-    img[layer] = pixels_in_layer + ['2'] * (width * height - len(pixels_in_layer))
-
-    print img
-    for layer in img:
-        print str("") +  ": " + str(img[layer])
+    return data
 
 
-    decoded = []
-    for pixel_number in range(layer_size):
-        pixel = 2
-        layer_idx = 0
-        while layer_idx < layers:
-            # print "Checking layer " + str(layer_idx) + " for pixel_nb " + str(pixel_number)
-            if img[layer_idx][pixel_number] == `1`:
-                pixel = `1`
-                break
-            if img[layer_idx][pixel_number] == `0`:
-                pixel = `0`
-                break
-            layer_idx += 1
-        decoded.append(pixel)
+class Calculator:
+    def __init__(self, data):
+        self.data = data
+        self.input_queue = []
+        self.input_queue.reverse()
+        self.finished = False
+        self.instruction_idx = 0
 
+    def get_param_value(self, param, mode):
+        if mode == 0:
+            return self.data[param]
+        if mode == 1:
+            return param
 
-    print ": " + str(decoded)
-    result = ""
+        print("Err: Unknown mode " + str(mode))
+        raise
 
-    pidx = 0
-    row =""
-    for l in range (height):
-        print row
-        row = ""
-        for c in range (width):
-            p = decoded[pidx]
-            if p == '1':
-                row+="$"
+    def do_instruction(self):
+        instr = decode_instruction(self.data[self.instruction_idx])
+        code = instr["code"]
+
+        first = self.data[self.instruction_idx + 1]
+
+        if code == 99:
+            self.finished = True
+            self.instruction_idx = len(self.data)
+            return
+
+        if code == 3:
+            self.data[first] = self.input_queue.pop()
+            self.instruction_idx = instr["len"] + self.instruction_idx
+            return
+
+        if code == 4:
+            first_evaluated = first
+            out = self.data[first_evaluated]
+            self.instruction_idx = instr["len"] + self.instruction_idx
+            print("output: " + str(out))
+            return out
+
+        second = self.data[self.instruction_idx + 2]
+        pos = self.data[self.instruction_idx + 3]
+
+        first_evaluated = self.get_param_value(first, instr["mode1"])
+        second_evaluated = self.get_param_value(second, instr["mode2"])
+
+        if code == 5:
+            if first_evaluated != 0:
+                self.instruction_idx = second_evaluated
             else:
-                row+=" "
-            pidx+=1
+                self.instruction_idx = instr["len"] + self.instruction_idx
+            return
 
-    print row
-    print
-    print
+        if code == 6:
+            if first_evaluated == 0:
+                self.instruction_idx = second_evaluated
+            else:
+                self.instruction_idx = instr["len"] + self.instruction_idx
+            return
+
+        if code == 7:
+            if first_evaluated < second_evaluated:
+                self.data[pos] = 1
+            else:
+                self.data[pos] = 0
+            self.instruction_idx = instr["len"] + self.instruction_idx
+            return
+
+        if code == 8:
+            if first_evaluated == second_evaluated:
+                self.data[pos] = 1
+            else:
+                self.data[pos] = 0
+            self.instruction_idx = instr["len"] + self.instruction_idx
+            return
+
+        self.data = extend(self.data, pos)
+        val = -1000
+        if code == 1:
+            val = first_evaluated + second_evaluated
+            self.data[pos] = val
+        elif code == 2:
+            val = first_evaluated * second_evaluated
+            self.data[pos] = val
+        else:
+            print("Err: Invalid code " + str(code))
+
+        self.instruction_idx = instr["len"] + self.instruction_idx
+        return
+
+    def input(self, input):
+        self.input_queue.insert(0, input)
+
+    def run(self):
+        output = None
+        while output == None and self.finished == False:
+            output = self.do_instruction()
+        return output
 
 
-    print "result = " + result
-    print "result len = " + str(len(result))
+def amplifiers(phase):
+    data = [3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5]
 
+    a = Calculator(data)
+    a.input(phase[0])
 
-decode("input/d8.txt", 25, 6)
-#decode("input/d7_short.txt", 2, 2)
+    b = Calculator(data)
+    b.input(phase[1])
+
+    c = Calculator(data)
+    c.input(phase[2])
+
+    d = Calculator(data)
+    d.input(phase[3])
+
+    e = Calculator(data)
+    e.input(phase[4])
+
+    signal = 0
+
+    while not (a.finished and b.finished and c.finished and d.finished and e.finished):
+        a.input(signal)
+        signal = a.run()
+
+        b.input(signal)
+        signal = b.run()
+
+        c.input(signal)
+        signal = c.run()
+
+        d.input(signal)
+        signal = d.run()
+
+        e.input(signal)
+        signal = e.run()
+
+    return signal
+
+result = amplifiers([9,8,7,6,5])
+
+print(result)
